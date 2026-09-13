@@ -124,6 +124,15 @@ src/
 
 ---
 
+## Verification & Developer Telemetry
+
+Press **F1** or click the **⚙ DEV DEBUG** button in the top-right corner to toggle real-time developer telemetry:
+- Real-time FPS, triangle count, and draw call telemetry.
+- Dynamic vehicle speed, world coordinates, and 4-wheel suspension contact indicators.
+- One-click toggle for the Screen-Space Sobel Ink Outline pass.
+
+---
+
 ## License
 
 ISC License. Built for Sketch Apocalypse Foundation Phase.
