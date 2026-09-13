@@ -1,0 +1,56 @@
+:root {
+  --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --ink-primary: #121626;
+  --paper-cream: #fbf8f0;
+  --accent-orange: #e67e22;
+  --accent-red: #c0392b;
+  --accent-amber: #f39c12;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--paper-cream);
+  font-family: var(--font-main);
+  color: var(--ink-primary);
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Notebook paper watermark/lines overlay */
+.notebook-page-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  background: 
+    linear-gradient(90deg, rgba(230, 80, 80, 0.08) 0px, rgba(230, 80, 80, 0.08) 1px, transparent 1px) 72px 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(70, 90, 140, 0.035) 31px, rgba(70, 90, 140, 0.035) 32px);
+  box-shadow: inset 0 0 100px rgba(70, 50, 20, 0.06);
+}
