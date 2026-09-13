@@ -105,6 +105,25 @@ src/
 
 ---
 
+## Development Roadmap
+
+- [x] **Phase A — Clean Architecture & Project Setup**: React, Vite, TypeScript, Three.js foundation.
+- [x] **Phase B — Visual Quality Gate**:
+  - [x] Hero Survival 4x4 Buggy model with articulated suspension.
+  - [x] Sculpted Pine & Broadleaf flowering tree assets.
+  - [x] Stratified Geological Cliff & faceted boulders.
+  - [x] Architectural Alpine Cottage with glowing windows.
+  - [x] 3D Crowned Road segment with curbs and line markings.
+  - [x] Custom NPR ToonMaterial shader with crosshatching.
+  - [x] Screen-Space Sobel ink outline pass in deep indigo (`#121626`).
+  - [x] Notebook paper background overlay.
+  - [x] Arcade raycast vehicle physics with 4-wheel contact telemetry.
+  - [x] Speedometer HUD & Developer Debug panel.
+- [ ] **Phase C — Playable Vehicle Sandbox & World Expansion**: Multi-biome streaming & procedural placement.
+- [ ] **Future Phase — Zombie Survival Mechanics**: Spawning, hordes, and survival inventory.
+
+---
+
 ## License
 
 ISC License. Built for Sketch Apocalypse Foundation Phase.
