@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameEngine } from '../game/core/GameEngine';
 import { SpeedometerHUD } from '../ui/SpeedometerHUD';
 import { GameOverlay } from '../ui/GameOverlay';
+import { MinimapHUD } from '../ui/MinimapHUD';
 import { DebugPanel, DebugStats } from '../debug/DebugPanel';
 
 export const App: React.FC = () => {
@@ -15,6 +16,11 @@ export const App: React.FC = () => {
     carSpeedKmh: 0,
     carSpeedMph: 0,
     position: { x: 0, y: 1.2, z: -22 },
+    carYaw: 0,
+    chunkCoord: { chunkX: 0, chunkZ: 0 },
+    activeChunks: 49,
+    loadedChunks: 49,
+    currentLod: 0,
     wheelContacts: [true, true, true, true],
     compressions: [0, 0, 0, 0],
     isGrounded: true,
@@ -22,6 +28,7 @@ export const App: React.FC = () => {
   });
 
   const [outlineEnabled, setOutlineEnabled] = useState(true);
+  const [chunkDebugEnabled, setChunkDebugEnabled] = useState(false);
   const [boostReserve, setBoostReserve] = useState(100);
   const [gear, setGear] = useState(1);
 
@@ -34,8 +41,8 @@ export const App: React.FC = () => {
 
     engine.onStatsUpdate = (newStats) => {
       setStats(newStats);
-      setBoostReserve(engine.testScene.physics.boostReserve);
-      setGear(engine.testScene.physics.gear);
+      setBoostReserve(engine.worldManager.physics.boostReserve);
+      setGear(engine.worldManager.physics.gear);
     };
 
     engine.start();
@@ -53,6 +60,13 @@ export const App: React.FC = () => {
     if (engineRef.current) {
       engineRef.current.toggleOutline();
       setOutlineEnabled(engineRef.current.outlinePass.enabled);
+    }
+  };
+
+  const handleToggleChunkDebug = () => {
+    if (engineRef.current) {
+      const active = engineRef.current.toggleChunkDebug();
+      setChunkDebugEnabled(active);
     }
   };
 
@@ -81,11 +95,20 @@ export const App: React.FC = () => {
         isDrifting={stats.isDrifting}
       />
 
+      {/* Top-Down Global World Minimap */}
+      <MinimapHUD
+        playerX={stats.position.x}
+        playerZ={stats.position.z}
+        carYaw={stats.carYaw}
+      />
+
       {/* Developer Telemetry & Shader Debug Tools */}
       <DebugPanel
         stats={stats}
         outlineEnabled={outlineEnabled}
+        chunkDebugEnabled={chunkDebugEnabled}
         onToggleOutline={handleToggleOutline}
+        onToggleChunkDebug={handleToggleChunkDebug}
         onResetCar={handleResetCar}
       />
     </div>

@@ -7,6 +7,11 @@ export interface DebugStats {
   carSpeedKmh: number;
   carSpeedMph: number;
   position: { x: number; y: number; z: number };
+  carYaw: number;
+  chunkCoord: { chunkX: number; chunkZ: number };
+  activeChunks: number;
+  loadedChunks: number;
+  currentLod: number;
   wheelContacts: boolean[];
   compressions: number[];
   isGrounded: boolean;
@@ -16,14 +21,18 @@ export interface DebugStats {
 interface DebugPanelProps {
   stats: DebugStats;
   outlineEnabled: boolean;
+  chunkDebugEnabled: boolean;
   onToggleOutline: () => void;
+  onToggleChunkDebug: () => void;
   onResetCar: () => void;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
   stats,
   outlineEnabled,
+  chunkDebugEnabled,
   onToggleOutline,
+  onToggleChunkDebug,
   onResetCar
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,7 +42,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={styles.toggleButton}
-        title="Toggle Developer Debug Mode (F1)"
+        title="Toggle Developer Debug Panel"
       >
         {isOpen ? '✕ HIDE DEBUG' : '⚙ DEV DEBUG'}
       </button>
@@ -42,6 +51,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
         <div style={styles.panel}>
           <div style={styles.header}>DEVELOPER TELEMETRY</div>
 
+          {/* Performance */}
           <div style={styles.section}>
             <div style={styles.row}>
               <span>FPS:</span>
@@ -57,15 +67,37 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
+          {/* World & Chunk Streaming Telemetry (Phase 2A) */}
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>WORLD & CHUNK ARCHITECTURE</div>
+            <div style={styles.row}>
+              <span>World Position:</span>
+              <strong>X:{stats.position.x.toFixed(1)} Y:{stats.position.y.toFixed(1)} Z:{stats.position.z.toFixed(1)}</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Chunk Coord:</span>
+              <strong style={{ color: '#f39c12' }}>CHUNK ({stats.chunkCoord.chunkX}, {stats.chunkCoord.chunkZ})</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Active Chunks:</span>
+              <strong>{stats.activeChunks} active / {stats.loadedChunks} loaded</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Streaming Radius:</span>
+              <strong>3 chunks (7x7 grid)</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Current LOD:</span>
+              <strong style={{ color: '#27ae60' }}>LOD {stats.currentLod}</strong>
+            </div>
+          </div>
+
+          {/* Vehicle Physics */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>VEHICLE PHYSICS</div>
             <div style={styles.row}>
               <span>Speed:</span>
               <strong>{Math.round(stats.carSpeedMph)} MPH ({Math.round(stats.carSpeedKmh)} km/h)</strong>
-            </div>
-            <div style={styles.row}>
-              <span>Position:</span>
-              <strong>X:{stats.position.x.toFixed(1)} Y:{stats.position.y.toFixed(1)} Z:{stats.position.z.toFixed(1)}</strong>
             </div>
             <div style={styles.row}>
               <span>Grounded:</span>
@@ -79,6 +111,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
+          {/* 4-Wheel Suspension */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>4-WHEEL SUSPENSION</div>
             <div style={styles.wheelGrid}>
@@ -94,9 +127,22 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>NPR SHADER CONTROLS</div>
+            <div style={styles.sectionTitle}>DEVELOPER CONTROLS</div>
             <div style={styles.actionRow}>
+              <button
+                onClick={onToggleChunkDebug}
+                style={{
+                  ...styles.actionBtn,
+                  backgroundColor: chunkDebugEnabled ? '#f39c12' : '#34495e',
+                  color: chunkDebugEnabled ? '#121626' : '#fff'
+                }}
+              >
+                [H] Chunk Debug: {chunkDebugEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            <div style={{ ...styles.actionRow, marginTop: '4px' }}>
               <button
                 onClick={onToggleOutline}
                 style={{
@@ -138,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   panel: {
     marginTop: '8px',
-    width: '280px',
+    width: '300px',
     backgroundColor: 'rgba(18, 22, 38, 0.94)',
     border: '2px solid #121626',
     borderRadius: '6px',
@@ -188,7 +234,7 @@ const styles: Record<string, React.CSSProperties> = {
   actionRow: {
     display: 'flex',
     gap: '6px',
-    marginTop: '6px'
+    marginTop: '4px'
   },
   actionBtn: {
     flex: 1,
