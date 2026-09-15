@@ -26,17 +26,49 @@ export class FollowCameraController {
     this.camera.lookAt(this.currentLookAt);
   }
 
-  public update(dt: number, physics: ArcadeRaycastPhysics) {
+  public update(
+    dt: number,
+    physics: ArcadeRaycastPhysics,
+    elevationSampler?: (x: number, z: number) => number
+  ) {
     if (dt <= 0 || dt > 0.1) dt = 0.016;
 
     // 1. Calculate target camera position behind the car
     const yaw = physics.yaw;
     const behindDir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
 
+    let effectiveDist = this.distance;
+
+    // Obstruction ray check: push camera closer if terrain rises steeply behind car
+    if (elevationSampler) {
+      const steps = 6;
+      for (let s = 1; s <= steps; s++) {
+        const testFrac = s / steps;
+        const testX = physics.position.x + behindDir.x * (this.distance * testFrac);
+        const testZ = physics.position.z + behindDir.z * (this.distance * testFrac);
+        const testGroundY = elevationSampler(testX, testZ);
+        const rayY = physics.position.y + 1.2 + (this.height - 1.2) * testFrac;
+
+        // If ground blocks ray, truncate distance to avoid being inside mountain
+        if (testGroundY > rayY - 0.5 && s > 1) {
+          effectiveDist = Math.max(2.8, this.distance * ((s - 0.5) / steps));
+          break;
+        }
+      }
+    }
+
     const targetPos = new THREE.Vector3()
       .copy(physics.position)
-      .addScaledVector(behindDir, this.distance);
+      .addScaledVector(behindDir, effectiveDist);
     targetPos.y = physics.position.y + this.height;
+
+    // Ensure target camera height stays above local terrain with at least 1.3m clearance
+    if (elevationSampler) {
+      const terrainAtTarget = elevationSampler(targetPos.x, targetPos.z);
+      if (targetPos.y < terrainAtTarget + 1.3) {
+        targetPos.y = terrainAtTarget + 1.3;
+      }
+    }
 
     // 2. Look-ahead target point ahead of vehicle
     const forwardDir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
@@ -57,6 +89,14 @@ export class FollowCameraController {
 
     this.currentPosition.lerp(targetPos, posDamp);
     this.currentLookAt.lerp(targetLookAt, rotDamp);
+
+    // Final safety clamp: never allow camera position to dip underground
+    if (elevationSampler) {
+      const terrainUnderCam = elevationSampler(this.currentPosition.x, this.currentPosition.z);
+      if (this.currentPosition.y < terrainUnderCam + 1.1) {
+        this.currentPosition.y = terrainUnderCam + 1.1;
+      }
+    }
 
     this.camera.position.copy(this.currentPosition);
     this.camera.lookAt(this.currentLookAt);

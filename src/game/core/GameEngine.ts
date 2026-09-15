@@ -114,8 +114,8 @@ export class GameEngine {
     // 3. Update Sky & Clouds
     this.environment.update(dt);
 
-    // 4. Update Camera Follow
-    this.cameraController.update(dt, this.worldManager.physics);
+    // 4. Update Camera Follow with Terrain Elevation Clearance (Anti-clipping)
+    this.cameraController.update(dt, this.worldManager.physics, (x, z) => WorldManager.sampleElevation(x, z));
 
     // 5. Render Scene with NPR Sobel Ink Outline Pass
     this.outlinePass.render(
@@ -124,7 +124,7 @@ export class GameEngine {
       this.cameraController.camera
     );
 
-    // 6. Telemetry Callback
+    // 6. Telemetry Callback (Phase 3 Part 1 Metrics)
     if (this.onStatsUpdate) {
       const p = this.worldManager.physics;
       const playerChunk = this.worldManager.getPlayerChunk();
@@ -142,9 +142,11 @@ export class GameEngine {
         activeChunks: this.worldManager.chunkManager.getActiveChunkCount(),
         loadedChunks: this.worldManager.chunkManager.getLoadedChunkCount(),
         currentLod: currentChunkObj ? currentChunkObj.lodLevel : 0,
-        wheelContacts: p.wheels.map((w) => w.contact),
-        compressions: p.wheels.map((w) => w.compression),
-        isGrounded: p.wheels.some((w) => w.contact),
+        terrainHeight: p.currentTerrainHeight,
+        terrainSlope: p.currentTerrainSlope,
+        wheelContacts: [p.wheels[0].contact, p.wheels[1].contact, p.wheels[2].contact, p.wheels[3].contact],
+        compressions: [p.wheels[0].compression, p.wheels[1].compression, p.wheels[2].compression, p.wheels[3].compression],
+        isGrounded: p.isGrounded,
         isDrifting: p.isDrifting
       });
     }
@@ -158,8 +160,31 @@ export class GameEngine {
     return this.worldManager.toggleChunkDebug();
   }
 
+  public warpToTestLocation(id: 'A' | 'B' | 'C' | 'D' | 'E') {
+    const terrainAdapter = {
+      getHeightAt: (x: number, z: number) => WorldManager.sampleElevation(x, z)
+    } as any;
+    
+    // Dynamic coordinate lookup for test locations
+    const coords: Record<string, { x: number; z: number; yaw: number }> = {
+      A: { x: 0, z: -22, yaw: 0 },
+      B: { x: 120, z: -80, yaw: 0.8 },
+      C: { x: -120, z: 160, yaw: -1.2 },
+      D: { x: 280, z: 320, yaw: 2.1 },
+      E: { x: 480, z: 460, yaw: 0.5 }
+    };
+
+    const target = coords[id];
+    if (target) {
+      this.worldManager.physics.warpTo(target.x, target.z, target.yaw, terrainAdapter);
+    }
+  }
+
   public resetCar() {
-    this.worldManager.physics.resetPose();
+    const terrainAdapter = {
+      getHeightAt: (x: number, z: number) => WorldManager.sampleElevation(x, z)
+    } as any;
+    this.worldManager.physics.resetPose(terrainAdapter);
   }
 
   public dispose() {

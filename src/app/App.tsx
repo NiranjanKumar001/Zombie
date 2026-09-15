@@ -21,6 +21,8 @@ export const App: React.FC = () => {
     activeChunks: 49,
     loadedChunks: 49,
     currentLod: 0,
+    terrainHeight: 0,
+    terrainSlope: 0,
     wheelContacts: [true, true, true, true],
     compressions: [0, 0, 0, 0],
     isGrounded: true,
@@ -76,6 +78,12 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleWarpTest = (id: 'A' | 'B' | 'C' | 'D' | 'E') => {
+    if (engineRef.current) {
+      engineRef.current.warpToTestLocation(id);
+    }
+  };
+
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       {/* 3D WebGL Canvas */}
@@ -110,6 +118,7 @@ export const App: React.FC = () => {
         onToggleOutline={handleToggleOutline}
         onToggleChunkDebug={handleToggleChunkDebug}
         onResetCar={handleResetCar}
+        onWarpTest={handleWarpTest}
       />
     </div>
   );

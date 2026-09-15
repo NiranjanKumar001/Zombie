@@ -31,6 +31,65 @@ export const WORLD_CONFIG = {
   ROAD_WIDTH: 9.2,
   ROAD_CORRIDOR_HALF_WIDTH: 7.0,
 
-  // Outer Map Boundary Impenetrable Mountain Elevation (meters)
-  MOUNTAIN_BARRIER_HEIGHT: 85.0
+  // --- Centralized Terrain Limits (Phase 3 Part 1) ---
+  SEA_LEVEL: -2.0,           // Lowest water basin / riverbed elevation (m)
+  MAX_TERRAIN_HEIGHT: 26.0,  // Stays safely below cloud layer (clouds are at Y=35–60m)
+  MAX_DRIVABLE_SLOPE: 0.38,  // Maximum drivable incline (~21 deg / 38% grade)
+  MAX_TERRAIN_SLOPE: 0.85,   // Maximum natural cliff slope (~40 deg, prevents 80-90 deg walls)
+
+  // Outer Map Boundary Mountain Barrier
+  MOUNTAIN_BARRIER_START: 1550,  // Distance from center where border highlands smoothly ramp
+  MOUNTAIN_BARRIER_HEIGHT: 26.0  // Peaks at MAX_TERRAIN_HEIGHT, smoothly blended
+};
+
+export interface TestLocation {
+  id: 'A' | 'B' | 'C' | 'D' | 'E';
+  name: string;
+  description: string;
+  x: number;
+  z: number;
+  yaw: number;
+}
+
+export const TEST_LOCATIONS: Record<string, TestLocation> = {
+  A: {
+    id: 'A',
+    name: 'TEST A: Flat',
+    description: 'Flat terrain (valley floor / road level)',
+    x: 0,
+    z: -22,
+    yaw: 0
+  },
+  B: {
+    id: 'B',
+    name: 'TEST B: Gentle Hill',
+    description: 'Gentle hill (slope ~0.10, normal driving)',
+    x: 120,
+    z: -80,
+    yaw: 0.8
+  },
+  C: {
+    id: 'C',
+    name: 'TEST C: Moderate Hill',
+    description: 'Moderate hill (slope ~0.26, dynamic pitch/roll)',
+    x: -120,
+    z: 160,
+    yaw: -1.2
+  },
+  D: {
+    id: 'D',
+    name: 'TEST D: Steep Hill',
+    description: 'Steep hill (slope ~0.45, traction loss / cannot climb)',
+    x: 280,
+    z: 320,
+    yaw: 2.1
+  },
+  E: {
+    id: 'E',
+    name: 'TEST E: Mountain / Cliff',
+    description: 'Mountain cliff base (slope > 0.80, physical barrier)',
+    x: 480,
+    z: 460,
+    yaw: 0.5
+  }
 };

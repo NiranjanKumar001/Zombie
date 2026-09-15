@@ -12,6 +12,8 @@ export interface DebugStats {
   activeChunks: number;
   loadedChunks: number;
   currentLod: number;
+  terrainHeight: number;
+  terrainSlope: number;
   wheelContacts: boolean[];
   compressions: number[];
   isGrounded: boolean;
@@ -25,6 +27,7 @@ interface DebugPanelProps {
   onToggleOutline: () => void;
   onToggleChunkDebug: () => void;
   onResetCar: () => void;
+  onWarpTest?: (id: 'A' | 'B' | 'C' | 'D' | 'E') => void;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
@@ -33,7 +36,8 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   chunkDebugEnabled,
   onToggleOutline,
   onToggleChunkDebug,
-  onResetCar
+  onResetCar,
+  onWarpTest
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -67,6 +71,53 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
+          {/* Terrain & Slope Telemetry (Phase 3 Part 1 Requirements) */}
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>TERRAIN & SLOPE TELEMETRY</div>
+            <div style={styles.row}>
+              <span>Terrain Height:</span>
+              <strong>{stats.terrainHeight.toFixed(2)} m</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Terrain Slope:</span>
+              <strong style={{
+                color: stats.terrainSlope > 0.38 ? '#e74c3c' : (stats.terrainSlope > 0.20 ? '#f39c12' : '#27ae60')
+              }}>
+                {(stats.terrainSlope * 100).toFixed(1)}% ({(Math.atan(stats.terrainSlope) * (180 / Math.PI)).toFixed(1)}°)
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Vehicle Grounded:</span>
+              <strong style={{ color: stats.isGrounded ? '#27ae60' : '#e74c3c' }}>
+                {stats.isGrounded ? 'YES (GROUNDED)' : 'NO (AIRBORNE)'}
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Wheel Contact FL:</span>
+              <strong style={{ color: stats.wheelContacts[0] ? '#27ae60' : '#e74c3c' }}>
+                {stats.wheelContacts[0] ? 'YES' : 'NO'} ({(stats.compressions[0] * 100).toFixed(1)}cm)
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Wheel Contact FR:</span>
+              <strong style={{ color: stats.wheelContacts[1] ? '#27ae60' : '#e74c3c' }}>
+                {stats.wheelContacts[1] ? 'YES' : 'NO'} ({(stats.compressions[1] * 100).toFixed(1)}cm)
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Wheel Contact RL:</span>
+              <strong style={{ color: stats.wheelContacts[2] ? '#27ae60' : '#e74c3c' }}>
+                {stats.wheelContacts[2] ? 'YES' : 'NO'} ({(stats.compressions[2] * 100).toFixed(1)}cm)
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Wheel Contact RR:</span>
+              <strong style={{ color: stats.wheelContacts[3] ? '#27ae60' : '#e74c3c' }}>
+                {stats.wheelContacts[3] ? 'YES' : 'NO'} ({(stats.compressions[3] * 100).toFixed(1)}cm)
+              </strong>
+            </div>
+          </div>
+
           {/* World & Chunk Streaming Telemetry (Phase 2A) */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>WORLD & CHUNK ARCHITECTURE</div>
@@ -83,10 +134,6 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               <strong>{stats.activeChunks} active / {stats.loadedChunks} loaded</strong>
             </div>
             <div style={styles.row}>
-              <span>Streaming Radius:</span>
-              <strong>3 chunks (7x7 grid)</strong>
-            </div>
-            <div style={styles.row}>
               <span>Current LOD:</span>
               <strong style={{ color: '#27ae60' }}>LOD {stats.currentLod}</strong>
             </div>
@@ -94,16 +141,10 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
 
           {/* Vehicle Physics */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>VEHICLE PHYSICS</div>
+            <div style={styles.sectionTitle}>VEHICLE DYNAMICS</div>
             <div style={styles.row}>
               <span>Speed:</span>
               <strong>{Math.round(stats.carSpeedMph)} MPH ({Math.round(stats.carSpeedKmh)} km/h)</strong>
-            </div>
-            <div style={styles.row}>
-              <span>Grounded:</span>
-              <strong style={{ color: stats.isGrounded ? '#27ae60' : '#e74c3c' }}>
-                {stats.isGrounded ? 'YES' : 'AIRBORNE'}
-              </strong>
             </div>
             <div style={styles.row}>
               <span>Drifting:</span>
@@ -111,19 +152,25 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
-          {/* 4-Wheel Suspension */}
+          {/* Developer Test Locations (Phase 3 Part 1 & 2) */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>4-WHEEL SUSPENSION</div>
-            <div style={styles.wheelGrid}>
-              {['FL', 'FR', 'RL', 'RR'].map((name, i) => (
-                <div key={name} style={styles.wheelItem}>
-                  <span>{name}:</span>
-                  <span style={{ color: stats.wheelContacts[i] ? '#27ae60' : '#e74c3c' }}>
-                    {stats.wheelContacts[i] ? '●' : '○'}
-                  </span>
-                  <span>{(stats.compressions[i] * 100).toFixed(0)}cm</span>
-                </div>
-              ))}
+            <div style={styles.sectionTitle}>WARP TEST LOCATIONS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+              <button onClick={() => onWarpTest?.('A')} style={styles.actionBtn} title="Test A: Flat terrain">
+                [A] Flat
+              </button>
+              <button onClick={() => onWarpTest?.('B')} style={styles.actionBtn} title="Test B: Gentle hill (~0.10 slope)">
+                [B] Gentle Hill
+              </button>
+              <button onClick={() => onWarpTest?.('C')} style={styles.actionBtn} title="Test C: Moderate hill (~0.25 slope)">
+                [C] Moderate Hill
+              </button>
+              <button onClick={() => onWarpTest?.('D')} style={styles.actionBtn} title="Test D: Steep hill (traction loss)">
+                [D] Steep Hill
+              </button>
+              <button onClick={() => onWarpTest?.('E')} style={{ ...styles.actionBtn, backgroundColor: '#8e44ad' }} title="Test E: Mountain cliff barrier">
+                [E] Cliff Face
+              </button>
             </div>
           </div>
 

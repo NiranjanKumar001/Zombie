@@ -521,9 +521,9 @@ export class SurvivalVehicleModel {
     bodyRoll: number,
     bodyPitch: number
   ) {
-    // 1. Chassis roll and pitch
-    this.chassisGroup.rotation.z = bodyRoll;
-    this.chassisGroup.rotation.x = bodyPitch;
+    // 1. Chassis rests aligned with root orientation (pitch and roll are carried by root)
+    this.chassisGroup.rotation.z = bodyRoll * 0.15; // Subtle secondary suspension roll
+    this.chassisGroup.rotation.x = bodyPitch * 0.15; // Subtle secondary suspension pitch
 
     // 2. Wheels steering & suspension vertical travel
     const nodes = [this.frontLeftWheel, this.frontRightWheel, this.rearLeftWheel, this.rearRightWheel];

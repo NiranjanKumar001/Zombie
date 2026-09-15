@@ -54,7 +54,7 @@ export class WorldManager {
     const roadNet = WorldManager.instance.chunkManager.roadNetwork;
 
     const rawTerrainY = biomeMgr.sampleRawTerrainHeight(worldX, worldZ);
-    return roadNet.applyRoadTerrainFlattening(worldX, worldZ, rawTerrainY);
+    return roadNet.applyRoadTerrainFlattening(worldX, worldZ, rawTerrainY, (x, z) => biomeMgr.sampleRawTerrainHeight(x, z));
   }
 
   /**
@@ -68,9 +68,14 @@ export class WorldManager {
 
     this.physics.update(dt, inputs, terrainAdapter);
 
-    // 2. Synchronize Vehicle Visual Pose
+    // 2. Synchronize Vehicle Visual Pose (3D Orientation: Pitch, Yaw, Roll)
     this.vehicleModel.root.position.copy(this.physics.position);
-    this.vehicleModel.root.rotation.set(0, this.physics.yaw, 0);
+    this.vehicleModel.root.rotation.set(
+      this.physics.chassisPitch,
+      this.physics.yaw,
+      this.physics.chassisRoll,
+      'YXZ'
+    );
 
     const compressions: [number, number, number, number] = [
       this.physics.wheels[0].compression,

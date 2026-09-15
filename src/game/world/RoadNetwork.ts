@@ -11,6 +11,8 @@ export interface RoadPointInfo {
   distance: number;       // Distance in meters to nearest road centerline
   roadType: 'main' | 'secondary' | 'dirt' | 'none';
   width: number;
+  centerlineX: number;
+  centerlineZ: number;
 }
 
 export class RoadNetwork {
@@ -55,6 +57,7 @@ export class RoadNetwork {
     let minDistance = 99999;
     let closestType: 'main' | 'secondary' | 'dirt' | 'none' = 'none';
     let roadWidth = 0;
+    let closestPt = new THREE.Vector3(worldX, 0, worldZ);
 
     // Sample points along main spline
     const mainSamples = 80;
@@ -65,6 +68,7 @@ export class RoadNetwork {
         minDistance = dist;
         closestType = 'main';
         roadWidth = 9.5;
+        closestPt = pt;
       }
     }
 
@@ -77,6 +81,7 @@ export class RoadNetwork {
         minDistance = dist;
         closestType = 'secondary';
         roadWidth = 6.5;
+        closestPt = pt;
       }
     }
 
@@ -89,38 +94,47 @@ export class RoadNetwork {
         minDistance = dist;
         closestType = 'dirt';
         roadWidth = 4.5;
+        closestPt = pt;
       }
     }
 
     return {
       distance: minDistance,
       roadType: closestType,
-      width: roadWidth
+      width: roadWidth,
+      centerlineX: closestPt.x,
+      centerlineZ: closestPt.z
     };
   }
 
   /** Modifies terrain elevation near roads to flatten road beds smoothly */
-  public applyRoadTerrainFlattening(worldX: number, worldZ: number, rawTerrainY: number): number {
+  public applyRoadTerrainFlattening(
+    worldX: number,
+    worldZ: number,
+    rawTerrainY: number,
+    rawHeightSampler?: (x: number, z: number) => number
+  ): number {
     const info = this.getRoadInfo(worldX, worldZ);
-    if (info.distance > info.width * 2.0) {
+    const halfW = info.width * 0.5;
+    const shoulderW = info.width * 2.2; // Wide, gradual, natural roadside verge
+
+    if (info.distance > shoulderW) {
       return rawTerrainY;
     }
 
-    const halfW = info.width * 0.5;
-    const shoulderW = info.width * 1.2;
+    const roadCenterY = rawHeightSampler
+      ? rawHeightSampler(info.centerlineX, info.centerlineZ)
+      : rawTerrainY;
 
     if (info.distance <= halfW) {
-      // Direct road crown elevation (slightly raised 0.15m over terrain)
-      return rawTerrainY * 0.1 + 0.15;
-    } else if (info.distance <= shoulderW) {
-      // Smooth blend factor from road edge to terrain shoulder
+      // Direct road crown elevation (subtly crowned by 0.08m over centerline)
+      return roadCenterY + 0.08;
+    } else {
+      // Smooth Hermite blend factor from road edge to terrain shoulder (no sudden walls)
       const t = (info.distance - halfW) / (shoulderW - halfW);
       const smoothT = t * t * (3 - 2 * t);
-      const roadY = rawTerrainY * 0.1 + 0.15;
-      return THREE.MathUtils.lerp(roadY, rawTerrainY, smoothT);
+      return THREE.MathUtils.lerp(roadCenterY + 0.08, rawTerrainY, smoothT);
     }
-
-    return rawTerrainY;
   }
 
   /** Builds 3D road corridor ribbon mesh for a given 256m chunk */
