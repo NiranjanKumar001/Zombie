@@ -27,6 +27,7 @@ export class InputManager {
     const isSpace = this.keys['Space'];
     const isShift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
     const isReset = this.keys['KeyR'] || this.keys['r'];
+    const isChunkDebug = this.keys['KeyH'] || this.keys['h'];
 
     let throttle = 0;
     let brake = 0;
@@ -43,7 +44,8 @@ export class InputManager {
       steer,
       handbrake: !!isSpace,
       boost: !!isShift,
-      reset: !!isReset
+      reset: !!isReset,
+      chunkDebugToggle: !!isChunkDebug
     };
   }
 }

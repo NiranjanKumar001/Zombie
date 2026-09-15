@@ -8,6 +8,7 @@ export interface VehicleInputs {
   handbrake: boolean;
   boost: boolean;
   reset: boolean;
+  chunkDebugToggle?: boolean;
 }
 
 export interface WheelState {
@@ -181,9 +182,17 @@ export class ArcadeRaycastPhysics {
       }
     }
 
-    // Air resistance & rolling friction
-    const dragCoeff = 0.35;
-    const rollingCoeff = 0.08;
+    // Air resistance, rolling friction, and river water drag
+    let dragCoeff = 0.35;
+    let rollingCoeff = 0.08;
+
+    // Water Drag check if vehicle is submerged in river (-1.5m)
+    if (this.position.y < -1.0) {
+      const depth = Math.min(2.0, -1.0 - this.position.y);
+      dragCoeff += depth * 2.5; // Heavy hydrodynamic water drag
+      this.velocity.y += depth * 4.0 * dt; // Water buoyancy force
+    }
+
     accel -= (forwardSpeed * dragCoeff + Math.sign(forwardSpeed) * rollingCoeff);
 
     // Apply acceleration
