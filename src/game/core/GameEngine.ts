@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VisualTestScene } from '../world/VisualTestScene';
+import { WorldManager } from '../world/WorldManager';
 import { StylizedEnvironment } from '../../rendering/lighting/StylizedEnvironment';
 import { FollowCameraController } from '../camera/FollowCameraController';
 import { ScreenSpaceOutlinePass } from '../../rendering/outlines/ScreenSpaceOutlinePass';
@@ -8,7 +8,8 @@ import { DebugStats } from '../../debug/DebugPanel';
 
 export class GameEngine {
   public renderer: THREE.WebGLRenderer;
-  public testScene: VisualTestScene;
+  public scene: THREE.Scene;
+  public worldManager: WorldManager;
   public environment: StylizedEnvironment;
   public cameraController: FollowCameraController;
   public outlinePass: ScreenSpaceOutlinePass;
@@ -20,13 +21,14 @@ export class GameEngine {
   private lastFpsUpdate: number = 0;
   private currentFps: number = 60;
 
+  private lastChunkDebugState: boolean = false;
   public onStatsUpdate?: (stats: DebugStats) => void;
 
   constructor(container: HTMLElement) {
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
-    // 1. Renderer
+    // 1. WebGL Renderer
     this.renderer = new THREE.WebGLRenderer({
       powerPreference: 'high-performance',
       antialias: true,
@@ -36,26 +38,29 @@ export class GameEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor('#223d68', 1.0);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.BasicShadowMap; // Sharp graphic comic shadows
+    this.renderer.shadowMap.type = THREE.BasicShadowMap;
     this.renderer.toneMapping = THREE.NoToneMapping;
     container.appendChild(this.renderer.domElement);
 
-    // 2. Scene & Test Assets
-    this.testScene = new VisualTestScene();
+    // 2. Global Three.js Scene
+    this.scene = new THREE.Scene();
 
-    // 3. Stylized Environment
-    this.environment = new StylizedEnvironment(this.testScene.scene);
+    // 3. WorldManager (Phase 2A Streaming Chunk Architecture)
+    this.worldManager = new WorldManager(this.scene);
 
-    // 4. Camera
-    this.cameraController = new FollowCameraController(55, width / height, 0.1, 500);
+    // 4. Stylized Environment (Sun light, sky dome, clouds)
+    this.environment = new StylizedEnvironment(this.scene);
 
-    // 5. NPR Screen-Space Outline Pass
+    // 5. Third-Person Follow Camera
+    this.cameraController = new FollowCameraController(55, width / height, 0.1, 750);
+
+    // 6. NPR Screen-Space Sobel Ink Outline Pass
     this.outlinePass = new ScreenSpaceOutlinePass(width, height);
 
-    // 6. Input
+    // 7. Input Manager
     this.inputManager = new InputManager();
 
-    // Resize listener
+    // Window Resize Listener
     window.addEventListener('resize', this.onResize);
   }
 
@@ -86,7 +91,7 @@ export class GameEngine {
     const dt = Math.min((time - this.lastTime) / 1000, 0.1);
     this.lastTime = time;
 
-    // FPS measurement
+    // FPS Measurement
     this.frameCount++;
     if (time - this.lastFpsUpdate >= 500) {
       this.currentFps = Math.round((this.frameCount * 1000) / (time - this.lastFpsUpdate));
@@ -94,40 +99,37 @@ export class GameEngine {
       this.lastFpsUpdate = time;
     }
 
-    // 1. Update Vehicle Physics
+    // 1. Get Input State
     const inputs = this.inputManager.getInputs();
-    this.testScene.physics.update(dt, inputs, this.testScene.terrain);
 
-    if (this.frameCount === 10) {
-      console.log("=== DIAGNOSTIC ===", {
-        camPos: this.cameraController.camera.position.toArray(),
-        carPhysPos: this.testScene.physics.position.toArray(),
-        carModelPos: this.testScene.vehicleModel.root.position.toArray(),
-        canvasW: this.renderer.domElement.width,
-        canvasH: this.renderer.domElement.height,
-        outlineEnabled: this.outlinePass.enabled
-      });
+    // Toggle Chunk Debug Borders on KeyH press edge trigger
+    if (inputs.chunkDebugToggle && !this.lastChunkDebugState) {
+      this.worldManager.toggleChunkDebug();
     }
+    this.lastChunkDebugState = !!inputs.chunkDebugToggle;
 
-    // 2. Update Vehicle Visual & Atmosphere
-    this.testScene.update(dt);
+    // 2. Update World Manager (Physics, Chunk Streaming, Vehicle, Particles)
+    this.worldManager.update(dt, inputs, this.cameraController.camera);
 
     // 3. Update Sky & Clouds
     this.environment.update(dt);
 
     // 4. Update Camera Follow
-    this.cameraController.update(dt, this.testScene.physics);
+    this.cameraController.update(dt, this.worldManager.physics);
 
-    // 5. Render Scene with NPR Outline Pass
+    // 5. Render Scene with NPR Sobel Ink Outline Pass
     this.outlinePass.render(
       this.renderer,
-      this.testScene.scene,
+      this.scene,
       this.cameraController.camera
     );
 
     // 6. Telemetry Callback
     if (this.onStatsUpdate) {
-      const p = this.testScene.physics;
+      const p = this.worldManager.physics;
+      const playerChunk = this.worldManager.getPlayerChunk();
+      const currentChunkObj = this.worldManager.chunkManager.getChunk(playerChunk.chunkX, playerChunk.chunkZ);
+
       this.onStatsUpdate({
         fps: this.currentFps,
         triangles: this.renderer.info.render.triangles,
@@ -135,6 +137,11 @@ export class GameEngine {
         carSpeedKmh: p.speedKmh,
         carSpeedMph: p.speedMph,
         position: { x: p.position.x, y: p.position.y, z: p.position.z },
+        carYaw: p.yaw,
+        chunkCoord: { chunkX: playerChunk.chunkX, chunkZ: playerChunk.chunkZ },
+        activeChunks: this.worldManager.chunkManager.getActiveChunkCount(),
+        loadedChunks: this.worldManager.chunkManager.getLoadedChunkCount(),
+        currentLod: currentChunkObj ? currentChunkObj.lodLevel : 0,
         wheelContacts: p.wheels.map((w) => w.contact),
         compressions: p.wheels.map((w) => w.compression),
         isGrounded: p.wheels.some((w) => w.contact),
@@ -147,8 +154,12 @@ export class GameEngine {
     this.outlinePass.enabled = !this.outlinePass.enabled;
   }
 
+  public toggleChunkDebug(): boolean {
+    return this.worldManager.toggleChunkDebug();
+  }
+
   public resetCar() {
-    this.testScene.physics.resetPose();
+    this.worldManager.physics.resetPose();
   }
 
   public dispose() {
