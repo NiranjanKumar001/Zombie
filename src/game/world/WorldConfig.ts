@@ -37,13 +37,18 @@ export const WORLD_CONFIG = {
   MAX_DRIVABLE_SLOPE: 0.38,  // Maximum drivable incline (~21 deg / 38% grade)
   MAX_TERRAIN_SLOPE: 0.85,   // Maximum natural cliff slope (~40 deg, prevents 80-90 deg walls)
 
+  // --- Centralized Water Parameters (Phase 3 Part 2) ---
+  WATER_LEVEL: -1.2,          // Continuous surface elevation for lakes and river systems
+  SHALLOW_WATER_DEPTH: 0.6,  // Drivable shallow water threshold (m)
+  DEEP_WATER_DEPTH: 1.4,     // Deep water threshold (traction loss / submerge) (m)
+
   // Outer Map Boundary Mountain Barrier
   MOUNTAIN_BARRIER_START: 1550,  // Distance from center where border highlands smoothly ramp
   MOUNTAIN_BARRIER_HEIGHT: 26.0  // Peaks at MAX_TERRAIN_HEIGHT, smoothly blended
 };
 
 export interface TestLocation {
-  id: 'A' | 'B' | 'C' | 'D' | 'E';
+  id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W';
   name: string;
   description: string;
   x: number;
@@ -91,5 +96,13 @@ export const TEST_LOCATIONS: Record<string, TestLocation> = {
     x: 480,
     z: 460,
     yaw: 0.5
+  },
+  W: {
+    id: 'W',
+    name: 'TEST W: River Water',
+    description: 'Western River Valley (land -> shallow -> deep water transition)',
+    x: -160,
+    z: -100,
+    yaw: 1.57
   }
 };

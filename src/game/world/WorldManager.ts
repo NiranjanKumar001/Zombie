@@ -95,8 +95,9 @@ export class WorldManager {
     // 3. Update Atmosphere Leaves
     this.atmosphere.update(dt, this.physics.position);
 
-    // 4. Update Chunk Manager Streaming Engine
+    // 4. Update Chunk Manager Streaming Engine & Water Ripple Animation
     this.chunkManager.update(this.physics.position, camera);
+    this.chunkManager.waterSystem.update(dt);
   }
 
   /**

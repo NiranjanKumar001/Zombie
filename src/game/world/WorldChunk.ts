@@ -94,9 +94,14 @@ export class WorldChunk {
     const colGrass = new THREE.Color('#385c31');
     const colMeadow = new THREE.Color('#4c783c');
     const colDirt = new THREE.Color('#5a4332');
+    const colSand = new THREE.Color('#a89369');   // Warm beach sand
+    const colMud = new THREE.Color('#423528');    // Wet river mud & silt
+    const colDeepRiver = new THREE.Color('#1c3327'); // Deep submerged riverbed
     const colRock = new THREE.Color('#78583c');
     const colMountain = new THREE.Color('#2d3b4e');
-    const colRiver = new THREE.Color('#26503f');
+
+    const waterLvl = WaterSystem.WATER_LEVEL; // -1.2m
+    let minElevation = 999;
 
     for (let i = 0; i < pos.count; i++) {
       const localX = pos.getX(i);
@@ -105,6 +110,7 @@ export class WorldChunk {
       const worldZ = this.bounds.centerZ + localZ;
 
       const y = this.elevationProvider(worldX, worldZ);
+      if (y < minElevation) minElevation = y;
       pos.setY(i, y);
 
       const roadInfo = this.roadNetwork.getRoadInfo(worldX, worldZ);
@@ -113,14 +119,26 @@ export class WorldChunk {
 
       if (roadInfo.distance < roadInfo.width * 1.2) {
         vCol.lerp(colDirt, Math.max(0, 1.0 - roadInfo.distance / (roadInfo.width * 1.2)));
-      } else if (y < WaterSystem.WATER_LEVEL + 0.5) {
-        vCol.lerp(colRiver, 0.8);
-      } else if (y > 45.0) {
-        vCol.lerp(colMountain, Math.min(1.0, (y - 45.0) / 40.0));
+      } else if (y < waterLvl - 0.5) {
+        // Deep submerged riverbed
+        vCol.lerp(colDeepRiver, 0.95);
+      } else if (y < waterLvl) {
+        // Submerged shallow riverbed / wet silt
+        vCol.lerp(colMud, 0.9);
+      } else if (y < waterLvl + 0.65) {
+        // Readable Shoreline: Sand & beach pebbles meeting the water
+        const t = (y - waterLvl) / 0.65;
+        const shoreCol = colSand.clone().lerp(colMud, 1.0 - t);
+        vCol.lerp(shoreCol, 0.85);
+      } else if (y < waterLvl + 2.0) {
+        // Lush riverside meadow verge
+        vCol.lerp(colMeadow, 0.65);
+      } else if (y > 20.0) {
+        vCol.lerp(colMountain, Math.min(1.0, (y - 20.0) / 6.0));
       } else if (y > 12.0) {
-        vCol.lerp(colRock, Math.min(1.0, (y - 12.0) / 30.0));
+        vCol.lerp(colRock, Math.min(1.0, (y - 12.0) / 12.0));
       } else if (y > 2.0) {
-        vCol.lerp(colMeadow, 0.5);
+        vCol.lerp(colMeadow, 0.4);
       }
 
       colors[i * 3] = vCol.r;
@@ -150,11 +168,10 @@ export class WorldChunk {
     this.roadGroup.position.set(-this.bounds.centerX, 0, -this.bounds.centerZ);
     this.group.add(this.roadGroup);
 
-    // 3. Water Surface Plane
-    this.waterMesh = this.waterSystem.buildChunkWaterMesh(this.chunkX, this.chunkZ);
+    // 3. Water Surface Plane (Continuous & Seamless River Corridor)
+    const hasWater = minElevation < WaterSystem.WATER_LEVEL + 0.2;
+    this.waterMesh = this.waterSystem.buildChunkWaterMesh(this.chunkX, this.chunkZ, hasWater);
     if (this.waterMesh) {
-      this.waterMesh.position.x -= this.bounds.centerX;
-      this.waterMesh.position.z -= this.bounds.centerZ;
       this.group.add(this.waterMesh);
     }
 
@@ -180,7 +197,7 @@ export class WorldChunk {
 
       // Enforce strict ROAD_CLEARANCE
       if (roadInfo.distance >= assetDef.roadClearance) {
-        if (wy > -1.0 && wy < 55.0) { // Don't place underwater or on extreme vertical peaks
+        if (wy > WaterSystem.WATER_LEVEL + 0.35 && wy < 24.0) { // Don't place underwater or on extreme vertical peaks
           const instance = registry.getTemplate(assetDef.id);
 
           const scale = rng.range(assetDef.scaleRange[0], assetDef.scaleRange[1]);

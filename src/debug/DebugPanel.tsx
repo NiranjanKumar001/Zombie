@@ -14,6 +14,9 @@ export interface DebugStats {
   currentLod: number;
   terrainHeight: number;
   terrainSlope: number;
+  waterLevel: number;
+  waterDepth: number;
+  waterState: string;
   wheelContacts: boolean[];
   compressions: number[];
   isGrounded: boolean;
@@ -27,7 +30,7 @@ interface DebugPanelProps {
   onToggleOutline: () => void;
   onToggleChunkDebug: () => void;
   onResetCar: () => void;
-  onWarpTest?: (id: 'A' | 'B' | 'C' | 'D' | 'E') => void;
+  onWarpTest?: (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') => void;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
@@ -68,6 +71,33 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             <div style={styles.row}>
               <span>Draw Calls:</span>
               <strong>{stats.drawCalls}</strong>
+            </div>
+          </div>
+
+          {/* Water System Telemetry (Phase 3 Part 2 Requirements) */}
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>WATER SYSTEM TELEMETRY</div>
+            <div style={styles.row}>
+              <span>Water Level:</span>
+              <strong>{stats.waterLevel.toFixed(2)} m</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Water Depth:</span>
+              <strong style={{ color: stats.waterDepth > 0 ? '#38bdf8' : '#ecf0f1' }}>
+                {stats.waterDepth.toFixed(2)} m
+              </strong>
+            </div>
+            <div style={styles.row}>
+              <span>Water State:</span>
+              <strong style={{
+                color: stats.waterState === 'LAND'
+                  ? '#27ae60'
+                  : (stats.waterState === 'SHALLOW WATER'
+                    ? '#38bdf8'
+                    : (stats.waterState === 'DEEP WATER' ? '#e67e22' : '#e74c3c'))
+              }}>
+                {stats.waterState}
+              </strong>
             </div>
           </div>
 
@@ -170,6 +200,9 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               </button>
               <button onClick={() => onWarpTest?.('E')} style={{ ...styles.actionBtn, backgroundColor: '#8e44ad' }} title="Test E: Mountain cliff barrier">
                 [E] Cliff Face
+              </button>
+              <button onClick={() => onWarpTest?.('W')} style={{ ...styles.actionBtn, backgroundColor: '#0284c7' }} title="Test W: River water (land -> shallow -> deep transition)">
+                [W] River Water
               </button>
             </div>
           </div>

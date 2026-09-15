@@ -23,6 +23,9 @@ export const App: React.FC = () => {
     currentLod: 0,
     terrainHeight: 0,
     terrainSlope: 0,
+    waterLevel: -1.2,
+    waterDepth: 0,
+    waterState: 'LAND',
     wheelContacts: [true, true, true, true],
     compressions: [0, 0, 0, 0],
     isGrounded: true,
@@ -78,7 +81,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleWarpTest = (id: 'A' | 'B' | 'C' | 'D' | 'E') => {
+  const handleWarpTest = (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') => {
     if (engineRef.current) {
       engineRef.current.warpToTestLocation(id);
     }

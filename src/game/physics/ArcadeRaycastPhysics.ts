@@ -40,6 +40,8 @@ export class ArcadeRaycastPhysics {
   public currentTerrainHeight: number = 0;
   public currentTerrainSlope: number = 0; // Rise / Run (Grade)
   public isGrounded: boolean = true;
+  public currentWaterDepth: number = 0;
+  public currentWaterState: 'LAND' | 'SHALLOW WATER' | 'DEEP WATER' | 'SUBMERGED' = 'LAND';
 
   // Visual chassis tilt angles
   public chassisPitch: number = 0;
@@ -205,7 +207,46 @@ export class ArcadeRaycastPhysics {
       }
     }
 
-    // 8. Longitudinal Acceleration & Braking with Traction Loss
+    // 8. Water Depth Detection & Physical Interaction (Phase 3 Part 2)
+    const riverDist = Math.abs(this.position.x - (-200));
+    if (riverDist < 115 && this.currentTerrainHeight < WORLD_CONFIG.WATER_LEVEL) {
+      this.currentWaterDepth = WORLD_CONFIG.WATER_LEVEL - this.currentTerrainHeight;
+    } else {
+      this.currentWaterDepth = 0;
+    }
+
+    let waterDrag = 0;
+    let waterBuoyancy = 0;
+
+    if (this.currentWaterDepth <= 0.04) {
+      this.currentWaterState = 'LAND';
+    } else if (this.currentWaterDepth <= WORLD_CONFIG.SHALLOW_WATER_DEPTH) {
+      this.currentWaterState = 'SHALLOW WATER';
+      // Shallow water: vehicle can drive with slight hydrodynamic drag & mild traction decrease
+      waterDrag = this.currentWaterDepth * 1.5;
+      traction *= 0.85;
+    } else if (this.currentWaterDepth <= WORLD_CONFIG.DEEP_WATER_DEPTH) {
+      this.currentWaterState = 'DEEP WATER';
+      // Deeper water: vehicle loses traction and slows down significantly
+      waterDrag = this.currentWaterDepth * 4.2;
+      const deepExcess = (this.currentWaterDepth - WORLD_CONFIG.SHALLOW_WATER_DEPTH);
+      traction *= Math.max(0.15, 0.85 - deepExcess * 0.9);
+      waterBuoyancy = deepExcess * 4.0;
+      for (let i = 0; i < 4; i++) {
+        this.wheels[i].slip = Math.max(this.wheels[i].slip, 0.65);
+      }
+    } else {
+      this.currentWaterState = 'SUBMERGED';
+      // Very deep water: vehicle begins drowning/submerging, heavy hydrodynamic drag
+      waterDrag = 8.0;
+      traction = 0.05;
+      waterBuoyancy = 6.5;
+      for (let i = 0; i < 4; i++) {
+        this.wheels[i].slip = 0.95;
+      }
+    }
+
+    // 9. Longitudinal Acceleration & Braking with Traction Loss
     let accel = 0;
     const maxSpeed = this.isBoosting ? (this.maxSpeedBoost / 3.6) : (this.maxSpeedForward / 3.6);
     const maxReverse = this.maxSpeedReverse / 3.6;
@@ -230,9 +271,13 @@ export class ArcadeRaycastPhysics {
       accel += gravitySlopeFactor;
     }
 
-    // Natural Drag & Rolling Friction
-    let dragCoeff = 0.35;
+    // Natural Drag, Rolling Friction & River Water Drag
+    let dragCoeff = 0.35 + waterDrag;
     let rollingCoeff = 0.08;
+
+    if (waterBuoyancy > 0) {
+      this.velocity.y += waterBuoyancy * dt;
+    }
 
     accel -= (forwardSpeed * dragCoeff + Math.sign(forwardSpeed) * rollingCoeff);
     this.velocity.addScaledVector(forward, accel * dt);
@@ -309,6 +354,8 @@ export class ArcadeRaycastPhysics {
     this.chassisRoll = 0;
     this.speedKmh = 0;
     this.speedMph = 0;
+    this.currentWaterDepth = 0;
+    this.currentWaterState = 'LAND';
   }
 
   public resetPose(terrain?: TerrainSceneModel) {

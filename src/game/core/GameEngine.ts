@@ -4,6 +4,7 @@ import { StylizedEnvironment } from '../../rendering/lighting/StylizedEnvironmen
 import { FollowCameraController } from '../camera/FollowCameraController';
 import { ScreenSpaceOutlinePass } from '../../rendering/outlines/ScreenSpaceOutlinePass';
 import { InputManager } from '../input/InputManager';
+import { WaterSystem } from '../world/WaterSystem';
 import { DebugStats } from '../../debug/DebugPanel';
 
 export class GameEngine {
@@ -144,6 +145,9 @@ export class GameEngine {
         currentLod: currentChunkObj ? currentChunkObj.lodLevel : 0,
         terrainHeight: p.currentTerrainHeight,
         terrainSlope: p.currentTerrainSlope,
+        waterLevel: WaterSystem.WATER_LEVEL,
+        waterDepth: p.currentWaterDepth,
+        waterState: p.currentWaterState,
         wheelContacts: [p.wheels[0].contact, p.wheels[1].contact, p.wheels[2].contact, p.wheels[3].contact],
         compressions: [p.wheels[0].compression, p.wheels[1].compression, p.wheels[2].compression, p.wheels[3].compression],
         isGrounded: p.isGrounded,
@@ -160,7 +164,7 @@ export class GameEngine {
     return this.worldManager.toggleChunkDebug();
   }
 
-  public warpToTestLocation(id: 'A' | 'B' | 'C' | 'D' | 'E') {
+  public warpToTestLocation(id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') {
     const terrainAdapter = {
       getHeightAt: (x: number, z: number) => WorldManager.sampleElevation(x, z)
     } as any;
@@ -171,7 +175,8 @@ export class GameEngine {
       B: { x: 120, z: -80, yaw: 0.8 },
       C: { x: -120, z: 160, yaw: -1.2 },
       D: { x: 280, z: 320, yaw: 2.1 },
-      E: { x: 480, z: 460, yaw: 0.5 }
+      E: { x: 480, z: 460, yaw: 0.5 },
+      W: { x: -160, z: -100, yaw: 1.57 }
     };
 
     const target = coords[id];
