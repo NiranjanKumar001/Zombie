@@ -54,7 +54,7 @@ export class GameEngine {
     this.environment = new StylizedEnvironment(this.scene);
 
     // 5. Third-Person Follow Camera
-    this.cameraController = new FollowCameraController(55, width / height, 0.1, 850);
+    this.cameraController = new FollowCameraController(55, width / height, 0.1, 1400);
 
     // 6. NPR Screen-Space Sobel Ink Outline Pass
     this.outlinePass = new ScreenSpaceOutlinePass(width, height);

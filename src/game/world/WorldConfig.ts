@@ -74,7 +74,7 @@ export const LIGHTING_CONFIG = {
   // Elevated Cloud Layer (Strictly above MAX_TERRAIN_HEIGHT = 26.0m)
   CLOUD_ALTITUDE_MIN: 75.0,        // Lowest cloud base (guarantees >49m clearance)
   CLOUD_ALTITUDE_MAX: 110.0,       // High cloud puffs
-  SKY_DOME_RADIUS: 700.0,          // Fits comfortably inside camera far clipping plane (850m)
+  SKY_DOME_RADIUS: 1200.0,         // Expansive anime sky dome encompassing entire world
 
   // Tone Mapping & Exposure
   EXPOSURE: 1.05
