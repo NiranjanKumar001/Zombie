@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import { WORLD_CONFIG } from './WorldConfig';
+import { WORLD_CONFIG, LIGHTING_CONFIG } from './WorldConfig';
 
 export type WaterDepthState = 'LAND' | 'SHALLOW WATER' | 'DEEP WATER' | 'SUBMERGED';
 
 /**
- * Animated Stylized Water System for Phase 3 Part 2.
+ * Animated Stylized Water System for Phase 3 Part 2 & 3.
  * Provides:
- * - Stylized anime water shader with animated ripples, foam, and sunlight highlights
+ * - Stylized anime water shader with animated ripples, foam, and unified sunlight specular
+ * - Distance-based atmospheric perspective (fog fade) matching terrain and sky
  * - Continuous chunk-aligned water geometry spanning the river corridor without seams
  * - Physical water depth queries and depth classification (LAND, SHALLOW, DEEP, SUBMERGED)
  */
@@ -16,6 +17,12 @@ export class WaterSystem {
   private time: number = 0;
 
   constructor() {
+    const sunDir = new THREE.Vector3(
+      LIGHTING_CONFIG.SUN_DIR_X,
+      LIGHTING_CONFIG.SUN_DIR_Y,
+      LIGHTING_CONFIG.SUN_DIR_Z
+    ).normalize();
+
     this.waterMaterial = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: true,
@@ -24,7 +31,11 @@ export class WaterSystem {
         uShallowColor: { value: new THREE.Color('#38bdf8') }, // Luminous translucent cyan
         uDeepColor: { value: new THREE.Color('#1e40af') },    // Deep sapphire blue
         uFoamColor: { value: new THREE.Color('#f0f9ff') },    // Foam highlights
-        uSunDir: { value: new THREE.Vector3(0.5, 0.7, 0.4).normalize() },
+        uSunDir: { value: sunDir },
+        uFogColor: { value: new THREE.Color(LIGHTING_CONFIG.FOG_COLOR) },
+        uFogNear: { value: LIGHTING_CONFIG.FOG_NEAR },
+        uFogFar: { value: LIGHTING_CONFIG.FOG_FAR },
+        uCameraPos: { value: new THREE.Vector3(0, 5, 0) },
         uOpacity: { value: 0.82 }
       },
       vertexShader: `
@@ -60,6 +71,10 @@ export class WaterSystem {
         uniform vec3 uDeepColor;
         uniform vec3 uFoamColor;
         uniform vec3 uSunDir;
+        uniform vec3 uFogColor;
+        uniform float uFogNear;
+        uniform float uFogFar;
+        uniform vec3 uCameraPos;
         uniform float uOpacity;
         uniform float uTime;
 
@@ -82,7 +97,7 @@ export class WaterSystem {
           waterCol = mix(waterCol, uFoamColor, caustic * 0.32);
 
           // Specular sunlight highlight
-          vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+          vec3 viewDir = normalize(uCameraPos - vWorldPosition);
           vec3 halfDir = normalize(uSunDir + viewDir);
           float spec = pow(max(dot(vNormal, halfDir), 0.0), 32.0);
           waterCol += uFoamColor * spec * 0.40;
@@ -91,10 +106,20 @@ export class WaterSystem {
           float edgeFoam = smoothstep(80.0, 96.0, riverDist);
           waterCol = mix(waterCol, uFoamColor, edgeFoam * 0.35);
 
+          // Distance Atmospheric Fog Fade
+          float dist = length(vWorldPosition - uCameraPos);
+          float fogFactor = clamp((dist - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+          float smoothFog = fogFactor * fogFactor * (3.0 - 2.0 * fogFactor);
+          waterCol = mix(waterCol, uFogColor, smoothFog * 0.85);
+
           gl_FragColor = vec4(waterCol, uOpacity);
         }
       `
     });
+
+    this.waterMaterial.onBeforeRender = (_renderer, _scene, camera) => {
+      this.waterMaterial.uniforms.uCameraPos.value.copy(camera.position);
+    };
   }
 
   /** Animate water shader ripples */
