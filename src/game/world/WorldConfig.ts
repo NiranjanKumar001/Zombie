@@ -47,8 +47,41 @@ export const WORLD_CONFIG = {
   MOUNTAIN_BARRIER_HEIGHT: 26.0  // Peaks at MAX_TERRAIN_HEIGHT, smoothly blended
 };
 
+/**
+ * Centralized Global Lighting & Sky System Configuration (Phase 3 Part 3)
+ * Guarantees one coherent, consistent lighting setup across the entire world.
+ */
+export const LIGHTING_CONFIG = {
+  // Global Sun Direction: Normalized vector pointing from light source toward origin
+  SUN_DIR_X: 0.45,
+  SUN_DIR_Y: 0.75,
+  SUN_DIR_Z: 0.48,
+
+  // Direct Sun Color & Intensity
+  SUN_COLOR: '#fff6e5',
+  SUN_INTENSITY: 1.85,
+
+  // Ambient Fill (Lifted to prevent dark shadow crush)
+  AMBIENT_SKY_COLOR: '#7ea5dc',    // Soft anime sky bounce
+  AMBIENT_GROUND_COLOR: '#5a4f42', // Warm earth reflection
+  AMBIENT_INTENSITY: 0.95,         // World never becomes too dark
+
+  // Atmospheric Perspective / Distance Fog
+  FOG_COLOR: '#7ca2cc',            // Matches horizon sky gradient
+  FOG_NEAR: 160.0,                 // Pristine clarity near player
+  FOG_FAR: 850.0,                  // Distant mountains fade into horizon haze
+
+  // Elevated Cloud Layer (Strictly above MAX_TERRAIN_HEIGHT = 26.0m)
+  CLOUD_ALTITUDE_MIN: 75.0,        // Lowest cloud base (guarantees >49m clearance)
+  CLOUD_ALTITUDE_MAX: 110.0,       // High cloud puffs
+  SKY_DOME_RADIUS: 700.0,          // Fits comfortably inside camera far clipping plane (850m)
+
+  // Tone Mapping & Exposure
+  EXPOSURE: 1.05
+};
+
 export interface TestLocation {
-  id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W';
+  id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W' | 'T1' | 'T2' | 'T3';
   name: string;
   description: string;
   x: number;
@@ -104,5 +137,29 @@ export const TEST_LOCATIONS: Record<string, TestLocation> = {
     x: -160,
     z: -100,
     yaw: 1.57
+  },
+  T1: {
+    id: 'T1',
+    name: 'TEST T1: Grass -> Forest',
+    description: 'Natural biome transition: Grassland -> Sparse Trees -> Dense Forest',
+    x: 60,
+    z: 100,
+    yaw: 0.75
+  },
+  T2: {
+    id: 'T2',
+    name: 'TEST T2: Grass -> Highland',
+    description: 'Natural biome transition: Grassland -> Rocky Verge -> Highland Boulders',
+    x: 200,
+    z: 220,
+    yaw: 1.1
+  },
+  T3: {
+    id: 'T3',
+    name: 'TEST T3: Mountain Horizon',
+    description: 'High elevation vista: Clouds high above (Y>75m), mountains fading softly into fog',
+    x: 420,
+    z: 380,
+    yaw: 2.8
   }
 };
