@@ -19,7 +19,7 @@ export class FollowCameraController {
   private fovDefault: number = 55;
   private fovBoost: number = 65;
 
-  constructor(fov = 55, aspect = 16 / 9, near = 0.1, far = 600) {
+  constructor(fov = 55, aspect = 16 / 9, near = 0.1, far = 850) {
     this.fovDefault = fov;
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     this.camera.position.copy(this.currentPosition);
