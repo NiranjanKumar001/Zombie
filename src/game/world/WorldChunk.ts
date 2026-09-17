@@ -91,14 +91,14 @@ export class WorldChunk {
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
 
-    const colGrass = new THREE.Color('#385c31');
-    const colMeadow = new THREE.Color('#4c783c');
+    const colGrass = new THREE.Color('#4c783c');
+    const colForest = new THREE.Color('#325c2d');
     const colDirt = new THREE.Color('#5a4332');
-    const colSand = new THREE.Color('#a89369');   // Warm beach sand
-    const colMud = new THREE.Color('#423528');    // Wet river mud & silt
+    const colSand = new THREE.Color('#a89369');      // Warm beach sand
+    const colMud = new THREE.Color('#423528');       // Wet river mud & silt
     const colDeepRiver = new THREE.Color('#1c3327'); // Deep submerged riverbed
-    const colRock = new THREE.Color('#78583c');
-    const colMountain = new THREE.Color('#2d3b4e');
+    const colRock = new THREE.Color('#746654');      // Rocky slope scree
+    const colMountain = new THREE.Color('#53637a');  // Soft anime mountain rock (blends with fog)
 
     const waterLvl = WaterSystem.WATER_LEVEL; // -1.2m
     let minElevation = 999;
@@ -114,8 +114,11 @@ export class WorldChunk {
       pos.setY(i, y);
 
       const roadInfo = this.roadNetwork.getRoadInfo(worldX, worldZ);
+      const moisture = this.biomeManager.sampleMoisture(worldX, worldZ);
 
-      let vCol = colGrass.clone();
+      // Base vegetation color: Smooth blend between open Grassland and Forest floor
+      const forestBlend = Math.min(1.0, Math.max(0.0, (moisture - 0.38) / 0.22));
+      let vCol = colGrass.clone().lerp(colForest, forestBlend * 0.7);
 
       if (roadInfo.distance < roadInfo.width * 1.2) {
         vCol.lerp(colDirt, Math.max(0, 1.0 - roadInfo.distance / (roadInfo.width * 1.2)));
@@ -132,13 +135,13 @@ export class WorldChunk {
         vCol.lerp(shoreCol, 0.85);
       } else if (y < waterLvl + 2.0) {
         // Lush riverside meadow verge
-        vCol.lerp(colMeadow, 0.65);
-      } else if (y > 20.0) {
-        vCol.lerp(colMountain, Math.min(1.0, (y - 20.0) / 6.0));
-      } else if (y > 12.0) {
-        vCol.lerp(colRock, Math.min(1.0, (y - 12.0) / 12.0));
-      } else if (y > 2.0) {
-        vCol.lerp(colMeadow, 0.4);
+        vCol.lerp(colGrass, 0.55);
+      } else if (y > 18.0) {
+        // High Mountain Peak (softer color, fades into sky fog)
+        vCol.lerp(colMountain, Math.min(1.0, (y - 18.0) / 8.0));
+      } else if (y > 9.0) {
+        // Highland Rocky Incline
+        vCol.lerp(colRock, Math.min(1.0, (y - 9.0) / 9.0));
       }
 
       colors[i * 3] = vCol.r;
@@ -152,7 +155,7 @@ export class WorldChunk {
     const terrainMat = new ToonMaterial({
       color: '#ffffff',
       useVertexColors: true,
-      hatchIntensity: 0.3
+      hatchIntensity: 0.22
     });
 
     this.terrainMesh = new THREE.Mesh(geo, terrainMat);
@@ -175,14 +178,10 @@ export class WorldChunk {
       this.group.add(this.waterMesh);
     }
 
-    // 4. Biome Asset Placement via AssetRegistry
+    // 4. Biome Asset Placement via Organic Density Transitions
     const registry = AssetRegistry.getInstance();
-    const candidateAssets = registry.getForBiome('FOREST')
-      .concat(registry.getForBiome('GRASSLAND'))
-      .concat(registry.getForBiome('HIGHLAND'))
-      .concat(registry.getForBiome('ROAD_CORRIDOR'));
+    const objectAttempts = 26;
 
-    const objectAttempts = 24;
     for (let o = 0; o < objectAttempts; o++) {
       const lx = rng.range(-halfSize + 12, halfSize - 12);
       const lz = rng.range(-halfSize + 12, halfSize - 12);
@@ -191,22 +190,54 @@ export class WorldChunk {
 
       const wy = this.elevationProvider(wx, wz);
       const roadInfo = this.roadNetwork.getRoadInfo(wx, wz);
+      const slope = this.biomeManager.sampleTerrainSlope(wx, wz, this.elevationProvider);
 
-      // Pick candidate asset matching biome & slope
-      const assetDef = candidateAssets[rng.int(0, candidateAssets.length - 1)];
+      // Don't place underwater, on roads, or on extreme cliff walls
+      if (wy <= WaterSystem.WATER_LEVEL + 0.35 || wy >= 24.0) continue;
+      if (roadInfo.distance < 10.0) continue;
 
-      // Enforce strict ROAD_CLEARANCE
-      if (roadInfo.distance >= assetDef.roadClearance) {
-        if (wy > WaterSystem.WATER_LEVEL + 0.35 && wy < 24.0) { // Don't place underwater or on extreme vertical peaks
-          const instance = registry.getTemplate(assetDef.id);
+      const treeDensity = this.biomeManager.sampleTreeDensity(wx, wz, wy, slope);
+      const weights = this.biomeManager.sampleBiomeWeights(wx, wz, roadInfo.distance, wy, slope);
 
-          const scale = rng.range(assetDef.scaleRange[0], assetDef.scaleRange[1]);
-          instance.position.set(lx, wy, lz);
-          instance.scale.setScalar(scale);
-          instance.rotation.y = rng.range(0, Math.PI * 2);
+      let chosenId: string | null = null;
 
-          this.placedObjectsGroup.add(instance);
+      if (weights.highland > 0.40) {
+        // Highland / Mountain Scree: Boulders and sedimentary cliffs
+        if (rng.nextFloat() < 0.65) {
+          const rockCandidates = ['talus_boulder', 'sedimentary_cliff', 'talus_boulder'];
+          chosenId = rockCandidates[rng.int(0, rockCandidates.length - 1)];
         }
+      } else if (treeDensity > 0.05) {
+        // Forest transition or dense forest
+        if (rng.nextFloat() < treeDensity) {
+          if (treeDensity > 0.50) {
+            // Dense forest: Pine, Oak, and occasional Alpine Cottage
+            const forestCandidates = ['pine_hero', 'oak_hero', 'pine_hero', 'alpine_cottage'];
+            chosenId = forestCandidates[rng.int(0, forestCandidates.length - 1)];
+          } else {
+            // Sparse transition zone: Oak, Pine, Grass Tuft, and Boulder
+            const sparseCandidates = ['oak_hero', 'pine_hero', 'talus_boulder', 'grass_tuft'];
+            chosenId = sparseCandidates[rng.int(0, sparseCandidates.length - 1)];
+          }
+        }
+      } else {
+        // Open Grassland: wide open plains with occasional grass tuft or low boulder
+        if (rng.nextFloat() < 0.20) {
+          chosenId = rng.nextFloat() > 0.3 ? 'grass_tuft' : 'talus_boulder';
+        }
+      }
+
+      if (chosenId) {
+        const instance = registry.getTemplate(chosenId);
+        const assetDef = registry.getDefinition(chosenId);
+        const scaleRange = assetDef ? assetDef.scaleRange : [0.8, 1.2];
+        const scale = rng.range(scaleRange[0], scaleRange[1]);
+
+        instance.position.set(lx, wy, lz);
+        instance.scale.setScalar(scale);
+        instance.rotation.y = rng.range(0, Math.PI * 2);
+
+        this.placedObjectsGroup.add(instance);
       }
     }
   }
