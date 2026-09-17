@@ -17,6 +17,10 @@ export interface DebugStats {
   waterLevel: number;
   waterDepth: number;
   waterState: string;
+  biomeName?: string;
+  biomeDescription?: string;
+  moisture?: number;
+  treeDensity?: number;
   wheelContacts: boolean[];
   compressions: number[];
   isGrounded: boolean;
@@ -30,7 +34,7 @@ interface DebugPanelProps {
   onToggleOutline: () => void;
   onToggleChunkDebug: () => void;
   onResetCar: () => void;
-  onWarpTest?: (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') => void;
+  onWarpTest?: (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W' | 'T1' | 'T2' | 'T3') => void;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
@@ -98,6 +102,27 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               }}>
                 {stats.waterState}
               </strong>
+            </div>
+          </div>
+
+          {/* Biome & Environment Telemetry (Phase 3 Part 3) */}
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>BIOME & ENVIRONMENT TELEMETRY</div>
+            <div style={styles.row}>
+              <span>Active Biome:</span>
+              <strong style={{ color: '#2ecc71' }}>{stats.biomeName ?? 'GRASSLAND'}</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Zone Description:</span>
+              <strong style={{ color: '#f1c40f' }}>{stats.biomeDescription ?? 'Open Plains'}</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Moisture Index:</span>
+              <strong>{((stats.moisture ?? 0.5) * 100).toFixed(0)}%</strong>
+            </div>
+            <div style={styles.row}>
+              <span>Tree Canopy Density:</span>
+              <strong>{((stats.treeDensity ?? 0) * 100).toFixed(0)}%</strong>
             </div>
           </div>
 
@@ -203,6 +228,15 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               </button>
               <button onClick={() => onWarpTest?.('W')} style={{ ...styles.actionBtn, backgroundColor: '#0284c7' }} title="Test W: River water (land -> shallow -> deep transition)">
                 [W] River Water
+              </button>
+              <button onClick={() => onWarpTest?.('T1')} style={{ ...styles.actionBtn, backgroundColor: '#27ae60' }} title="Test T1: Grass to Sparse Trees to Dense Forest">
+                [T1] Grass to Forest
+              </button>
+              <button onClick={() => onWarpTest?.('T2')} style={{ ...styles.actionBtn, backgroundColor: '#d35400' }} title="Test T2: Grass to Rocky Verge to Highland">
+                [T2] Grass to Highland
+              </button>
+              <button onClick={() => onWarpTest?.('T3')} style={{ ...styles.actionBtn, backgroundColor: '#34495e', gridColumn: 'span 2' }} title="Test T3: High Mountain Vista (Clouds high above, soft distant fog)">
+                [T3] Mountain Vista
               </button>
             </div>
           </div>

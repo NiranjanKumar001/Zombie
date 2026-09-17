@@ -26,6 +26,10 @@ export const App: React.FC = () => {
     waterLevel: -1.2,
     waterDepth: 0,
     waterState: 'LAND',
+    biomeName: 'GRASSLAND',
+    biomeDescription: 'Open Plains',
+    moisture: 0.50,
+    treeDensity: 0.0,
     wheelContacts: [true, true, true, true],
     compressions: [0, 0, 0, 0],
     isGrounded: true,
@@ -81,7 +85,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleWarpTest = (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') => {
+  const handleWarpTest = (id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W' | 'T1' | 'T2' | 'T3') => {
     if (engineRef.current) {
       engineRef.current.warpToTestLocation(id);
     }

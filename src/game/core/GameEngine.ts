@@ -37,10 +37,11 @@ export class GameEngine {
     });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor('#223d68', 1.0);
+    this.renderer.setClearColor('#7ca2cc', 1.0);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.BasicShadowMap;
-    this.renderer.toneMapping = THREE.NoToneMapping;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     container.appendChild(this.renderer.domElement);
 
     // 2. Global Three.js Scene
@@ -53,7 +54,7 @@ export class GameEngine {
     this.environment = new StylizedEnvironment(this.scene);
 
     // 5. Third-Person Follow Camera
-    this.cameraController = new FollowCameraController(55, width / height, 0.1, 750);
+    this.cameraController = new FollowCameraController(55, width / height, 0.1, 850);
 
     // 6. NPR Screen-Space Sobel Ink Outline Pass
     this.outlinePass = new ScreenSpaceOutlinePass(width, height);
@@ -112,11 +113,11 @@ export class GameEngine {
     // 2. Update World Manager (Physics, Chunk Streaming, Vehicle, Particles)
     this.worldManager.update(dt, inputs, this.cameraController.camera);
 
-    // 3. Update Sky & Clouds
-    this.environment.update(dt);
-
-    // 4. Update Camera Follow with Terrain Elevation Clearance (Anti-clipping)
+    // 3. Update Camera Follow with Terrain Elevation Clearance (Anti-clipping)
     this.cameraController.update(dt, this.worldManager.physics, (x, z) => WorldManager.sampleElevation(x, z));
+
+    // 4. Update Sky & Clouds (follows camera to guarantee infinite horizon & >49m clearance)
+    this.environment.update(dt, this.cameraController.camera.position);
 
     // 5. Render Scene with NPR Sobel Ink Outline Pass
     this.outlinePass.render(
@@ -125,11 +126,21 @@ export class GameEngine {
       this.cameraController.camera
     );
 
-    // 6. Telemetry Callback (Phase 3 Part 1 Metrics)
+    // 6. Telemetry Callback (Phase 3 Part 1, 2, & 3 Metrics)
     if (this.onStatsUpdate) {
       const p = this.worldManager.physics;
       const playerChunk = this.worldManager.getPlayerChunk();
       const currentChunkObj = this.worldManager.chunkManager.getChunk(playerChunk.chunkX, playerChunk.chunkZ);
+      const biomeMgr = this.worldManager.chunkManager.biomeManager;
+      const roadNet = this.worldManager.chunkManager.roadNetwork;
+      const roadInfo = roadNet.getRoadInfo(p.position.x, p.position.z);
+      const biomeWeights = biomeMgr.sampleBiomeWeights(
+        p.position.x,
+        p.position.z,
+        roadInfo.distance,
+        p.currentTerrainHeight,
+        p.currentTerrainSlope
+      );
 
       this.onStatsUpdate({
         fps: this.currentFps,
@@ -148,6 +159,10 @@ export class GameEngine {
         waterLevel: WaterSystem.WATER_LEVEL,
         waterDepth: p.currentWaterDepth,
         waterState: p.currentWaterState,
+        biomeName: biomeWeights.dominantBiome,
+        biomeDescription: biomeWeights.biomeDescription,
+        moisture: biomeMgr.sampleMoisture(p.position.x, p.position.z),
+        treeDensity: biomeMgr.sampleTreeDensity(p.position.x, p.position.z, p.currentTerrainHeight, p.currentTerrainSlope),
         wheelContacts: [p.wheels[0].contact, p.wheels[1].contact, p.wheels[2].contact, p.wheels[3].contact],
         compressions: [p.wheels[0].compression, p.wheels[1].compression, p.wheels[2].compression, p.wheels[3].compression],
         isGrounded: p.isGrounded,
@@ -164,7 +179,7 @@ export class GameEngine {
     return this.worldManager.toggleChunkDebug();
   }
 
-  public warpToTestLocation(id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W') {
+  public warpToTestLocation(id: 'A' | 'B' | 'C' | 'D' | 'E' | 'W' | 'T1' | 'T2' | 'T3') {
     const terrainAdapter = {
       getHeightAt: (x: number, z: number) => WorldManager.sampleElevation(x, z)
     } as any;
@@ -176,7 +191,10 @@ export class GameEngine {
       C: { x: -120, z: 160, yaw: -1.2 },
       D: { x: 280, z: 320, yaw: 2.1 },
       E: { x: 480, z: 460, yaw: 0.5 },
-      W: { x: -160, z: -100, yaw: 1.57 }
+      W: { x: -160, z: -100, yaw: 1.57 },
+      T1: { x: 60, z: 100, yaw: 0.75 },
+      T2: { x: 200, z: 220, yaw: 1.1 },
+      T3: { x: 420, z: 380, yaw: 2.8 }
     };
 
     const target = coords[id];
